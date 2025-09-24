@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Seamless Auto Slideshow with Dots</title>
+  <style>
+    :root {
+      --bg: #111;
+      --panel: #1a1a1a;
+      --accent: #f39c12;
+      --muted: #bbb;
+      --card: #222;
+    }
+
+    * { box-sizing: border-box; }
+    body {
+      margin: 0;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, Arial;
+      background: var(--bg);
+      color: #fff;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      min-height: 100vh;
+    }
+
+    header {
+      width: 100%;
+      background: var(--card);
+      padding: 18px 12px;
+      text-align: center;
+      font-size: 1.6rem;
+      font-weight: 700;
+    }
+
+    .slideshow-wrapper {
+      width: 90%;
+      max-width: 1000px;
+      margin: 20px 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    .slideshow-container {
+      width: 100%;
+      height: 520px;
+      overflow: hidden;
+      border-radius: 14px;
+      position: relative;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.6);
+      background: #000;
+    }
+
+    .slides {
+      display: flex;
+      height: 100%;
+      /* transition is set/removed in JS for jump vs animated moves */
+    }
+
+    .slide {
+      min-width: 100%;
+      height: 100%;
+      position: relative;
+      flex-shrink: 0;
+      display: block;
+    }
+
+    .slide img {
+      display: block;
+      width: 100%;
+      height: 100%;
+      object-fit: cover;
+      border-radius: 14px;
+    }
+
+    .caption {
+      position: absolute;
+      bottom: 28px;
+      left: 20px;
+      right: 20px;
+      padding: 10px 14px;
+      background: rgba(0,0,0,0.45);
+      border-radius: 10px;
+      text-align: center;
+      font-size: 1.05rem;
+      line-height: 1.2;
+    }
+
+    /* Dots (indicators) under the slideshow */
+    .dots {
+      display: flex;
+      gap: 10px;
+      margin-top: 12px;
+      margin-bottom: 8px;
+      justify-content: center;
+      align-items: center;
+      user-select: none;
+    }
+
+    .dot {
+      width: 12px;
+      height: 12px;
+      border-radius: 50%;
+      background: var(--muted);
+      cursor: pointer;
+      transition: transform .18s ease, background .18s ease;
+    }
+    .dot:hover { transform: scale(1.12); }
+    .dot.active { background: var(--accent); transform: scale(1.18); }
+
+    /* Description + footer */
+    .description {
+      width: 90%;
+      max-width: 1000px;
+      margin: 18px 0 26px;
+      background: var(--panel);
+      padding: 18px;
+      border-radius: 12px;
+      line-height: 1.6;
+      text-align: justify;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.45);
+      font-size: 1.05rem;
+    }
+
+    footer {
+      width: 100%;
+      background: var(--card);
+      padding: 14px 12px;
+      text-align: center;
+      font-size: 0.95rem;
+    }
+
+    @media (max-width: 720px) {
+      .slideshow-container { height: 320px; }
+      .description { font-size: 1rem; }
+    }
+  </style>
+</head>
+<body>
+  <header>
+    University of Uyo image Gallery
+  </header>
+
+  <div class="slideshow-wrapper">
+    <div class="slideshow-container" id="slideshowContainer">
+      <div class="slides" id="slides">
+        <!-- Real slides (replace URLs and captions as needed) -->
+        <div class="slide"><img src="/img/Admoiin block.jpg" alt=""><div class="caption">University of Uyo Admin Block</div></div>
+        <div class="slide"><img src="/img/cafeteria.jpg" alt=""><div class="caption">University of Uyo Cafeteria</div></div>
+        <div class="slide"><img src="/img/faculty of science.jpg" alt=""><div class="caption">University of Uyo Faculty of Science</div></div>
+        <div class="slide"><img src="/img/Post graduate schools.jpg" alt=""><div class="caption">University of Uyo Post Graduate school</div></div>
+      </div>
+    </div>
+
+    <!-- Dots (indicators) placed under the slide -->
+    <div class="dots" id="dots"></div>
+  </div>
+
+  <div class="description">
+    Welcome to my animated image gallery, a showcase of breathtaking landscapes from around the world. Each slide captures a different scene — from towering mountains and tranquil lakes to lush green forests and golden sunsets. The goal of this gallery is not just to present beautiful pictures, but to inspire you to pause for a moment, appreciate nature’s wonders, and feel a sense of calm in a fast-paced world. As the slides move seamlessly from one to another, allow yourself to journey into these places and imagine the fresh air, the sounds of wildlife, and the peaceful rhythm of nature itself.
+  </div>
+
+  <footer>© 2025 My Gallery – All Rights Reserved</footer>
+
+  <script>
+    // Run on load to ensure container widths are correct
+    window.addEventListener('load', () => {
+      const container = document.getElementById('slideshowContainer');
+      const slides = document.getElementById('slides');
+      const realSlides = Array.from(slides.children); // original slides
+      const realCount = realSlides.length;
+
+      // Clone first and last
+      const firstClone = realSlides[0].cloneNode(true);
+      const lastClone = realSlides[realSlides.length - 1].cloneNode(true);
+
+      slides.appendChild(firstClone);
+      slides.insertBefore(lastClone, slides.firstChild);
+
+      // Recompute arrays after cloning
+      const allSlides = Array.from(slides.children);
+      const totalSlides = allSlides.length; // realCount + 2
+      let index = 1; // we start at the first real slide (because 0 is lastClone)
+
+      // Helper: set transform in px (robust across widths)
+      function getSlideWidth() {
+        return container.clientWidth;
+      }
+
+      function setTransition(enabled) {
+        slides.style.transition = enabled ? 'transform 0.9s ease-in-out' : 'none';
+      }
+
+      function goToIndex(i, animated = true) {
+        const w = getSlideWidth();
+        setTransition(animated);
+        slides.style.transform = `translateX(${ -i * w }px)`;
+        index = i;
+        updateDots();
+      }
+
+      // Create dots for real slides
+      const dotsContainer = document.getElementById('dots');
+      const dots = [];
+      for (let i = 0; i < realCount; i++) {
+        const d = document.createElement('span');
+        d.className = 'dot';
+        d.dataset.slide = i; // 0..realCount-1
+        d.addEventListener('click', () => {
+          // clicking dot should jump to real slide i -> real index i+1
+          goToIndex(i + 1, true);
+          restartAuto();
+        });
+        dotsContainer.appendChild(d);
+        dots.push(d);
+      }
+
+      function updateDots() {
+        // Active dot should correspond to real slide (index 1..realCount)
+        const active = ((index - 1) % realCount + realCount) % realCount; // normalize
+        dots.forEach((d, i) => d.classList.toggle('active', i === active));
+      }
+
+      // Transition end: fix the jump when we hit clones
+      slides.addEventListener('transitionend', () => {
+        const w = getSlideWidth();
+        // If we've moved to the clone after the last real slide -> snap to first real
+        if (index === totalSlides - 1) {
+          setTransition(false);
+          index = 1;
+          slides.style.transform = `translateX(${ -index * w }px)`;
+        }
+        // If we've moved to the clone before the first real slide -> snap to last real
+        if (index === 0) {
+          setTransition(false);
+          index = totalSlides - 2;
+          slides.style.transform = `translateX(${ -index * w }px)`;
+        }
+        // After snapping (no transition), re-enable transitions for next move
+        // Use requestAnimationFrame to ensure the browser applied the non-animated transform
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => setTransition(true));
+        });
+        updateDots();
+      });
+
+      // Handle window resize: keep current slide visible without animation jump
+      window.addEventListener('resize', () => {
+        const w = getSlideWidth();
+        setTransition(false);
+        slides.style.transform = `translateX(${ -index * w }px)`;
+        // re-enable in next frame
+        requestAnimationFrame(() => {
+          requestAnimationFrame(() => setTransition(true));
+        });
+      });
+
+      // Initial placement (no animation)
+      goToIndex(index, false);
+
+      // Auto-play
+      let intervalId = null;
+      function nextSlide() {
+        index++;
+        goToIndex(index, true);
+      }
+      function startAuto() {
+        stopAuto();
+        intervalId = setInterval(nextSlide, 3000);
+      }
+      function stopAuto() {
+        if (intervalId) { clearInterval(intervalId); intervalId = null; }
+      }
+      function restartAuto() {
+        startAuto();
+      }
+
+      // Pause on hover/focus (optional, improves UX) — you can remove if you don't want pause
+      container.addEventListener('mouseenter', stopAuto);
+      container.addEventListener('mouseleave', startAuto);
+      container.addEventListener('focusin', stopAuto);
+      container.addEventListener('focusout', startAuto);
+
+      // Start autoplay
+      startAuto();
+      updateDots();
+    });
+  </script>
+</body>
+</html>
